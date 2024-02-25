@@ -1,0 +1,84 @@
+# Anzahl der Designs aus den Parametern erhalten
+AnzahDesigns = int(Parameters.Numbers)
+
+# STL-Datei öffnen
+DocumentInsert.Execute(r"D:\GenerativDesignLunaNG\Designs\GenericDesignNo_{}.stl".format(AnzahDesigns))
+
+# Netz automatisch reparieren
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+result = FacetAutoFix.Execute(selection)
+
+# 3D-Objekt skalieren
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+preserveHoles = False
+result = Scale.Execute(selection, Frame.Create(Point.Create(MM(0), MM(0), MM(0)), Direction.DirX, Direction.DirY),
+                       Vector.Create(MM(10000), MM(10000), MM(10000)), preserveHoles)
+
+# Facettierte Körper neu vernetzen
+options = FacetRemeshOptions()
+options.MaxEdgeLength = MM(10.0)
+options.AngleTolerance = DEG(35)
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+result = FacetRemesh.Create(selection, options)
+
+# GenDesign benennen
+primarySelection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+secondarySelection = Selection.Empty()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "GenDesign")
+
+# Motoranbindung erstellen: Oberflächen sammeln, deren Durchschnittsz-Achsenwert im Bereich von 0.425 bis 440 liegt
+facet = GetRootPart().Components[0].Content.Meshes[0]
+sel = Selection.Empty()
+face_collector1 = []
+
+for face in facet.Shape.Faces:
+    ZAchse = round(((face.Vertices[0].Position.Z + face.Vertices[1].Position.Z + face.Vertices[2].Position.Z) / 3), 3)
+    if 0.425 < ZAchse < 440:
+        face_collector1.append(face)
+        sel = sel + Selection.Create(facet.GetFace(face.Index))
+
+secondarySelection = Selection.Empty()
+result = NamedSelection.Create(sel, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "Motoranbindung")
+
+# Innenraum erstellen
+facet = GetRootPart().Components[0].Content.Meshes[0]
+sel = Selection.Empty()
+face_collector = []
+
+for face in facet.Shape.Faces:
+    XAchse = round(((face.Vertices[0].Position.X + face.Vertices[1].Position.X + face.Vertices[2].Position.X) / 3), 3)
+    YAchse = round(((face.Vertices[0].Position.Y + face.Vertices[1].Position.Y + face.Vertices[2].Position.Y) / 3), 3)
+    ZAchse = round(((face.Vertices[0].Position.Z + face.Vertices[1].Position.Z + face.Vertices[2].Position.Z) / 3), 3)
+    
+    if XAchse > 0.315 or XAchse < 0.015 or 0.415 < YAchse < 0.425 or 0.410 < ZAchse < 410:
+        face_collector.append(face)
+        sel = sel + Selection.Create(facet.GetFace(face.Index))
+
+secondarySelection = Selection.Empty()
+result = NamedSelection.Create(sel, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "Innenraum")
+
+# Benannte Auswahlgruppe erstellen
+facet = GetRootPart().Components[0].Content.Meshes[0]
+sel = Selection.Empty()
+face_collector = []
+
+# Benannte Auswahlgruppe: Oberflächen sammeln, die die Kriterien für X, Y und Z-Achsen erfüllen
+for face in facet.Shape.Faces:
+    XAchse = round(((face.Vertices[0].Position.X + face.Vertices[1].Position.X + face.Vertices[2].Position.X) / 3), 3)
+    YAchse = round(((face.Vertices[0].Position.Y + face.Vertices[1].Position.Y + face.Vertices[2].Position.Y) / 3), 3)
+    ZAchse = round(((face.Vertices[0].Position.Z + face.Vertices[1].Position.Z + face.Vertices[2].Position.Z) / 3), 3)
+    
+    if 0.00 <= XAchse < 0.02 and 0.15 <= YAchse < 0.18 and 0.02 <= ZAchse < 0.03:
+        face_collector.append(face)
+        sel = sel + Selection.Create(facet.GetFace(face.Index))
+
+secondarySelection = Selection.Empty()
+result = NamedSelection.Create(sel, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "Auswahlnuller")
+
+# Facettierte Körper neu vernetzen für benannte Auswahlgruppe
+selection = Selection.CreateByGroups(SelectionType.Primary, "Auswahlnuller")
+result = FacetRemesh.Create(selection)

@@ -1,0 +1,71 @@
+# Anzahl der Designs aus den Parametern erhalten
+AnzahDesigns = int(Parameters.Numbers)
+
+# STL-Datei öffnen
+DocumentInsert.Execute(r"C:\Users\3duser\Documents\DesignsGenerativDesignLunaNG\Designs\GenericDesignNo_{}.stl".format(AnzahDesigns))
+
+# Netz automatisch reparieren
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+result = FacetAutoFix.Execute(selection)
+
+# 3D-Objekt skalieren
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+preserveHoles = False
+result = Scale.Execute(selection, Frame.Create(Point.Create(MM(0), MM(0), MM(0)), Direction.DirX, Direction.DirY),
+                       Vector.Create(MM(10000), MM(10000), MM(10000)), preserveHoles)
+
+# Schrumpfverpacken
+bodies = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+options = ShrinkwrapOptions()
+options.MaxSize = MM(9.49232153939328)
+options.MinSize = MM(9.49232153939328)
+result = Shrinkwrap.Create(bodies, options)
+
+# Den facettierten Körper glätten
+num_smooth_iterations = 10
+current_iteration = 0
+while current_iteration < num_smooth_iterations:
+    current_iteration += 1
+    options = FacetSmoothOptions()
+    options.SmoothType = SmoothType.LocalSmoothing
+    options.AngleTolerance = DEG(60)
+    selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+    result = FacetSmooth.Create(selection, options)
+
+# In Volumenkörper umwandeln
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+mergeFaces = False
+result = ConvertToSolid.Execute(selection, mergeFaces, None)
+
+# Umhüllung erstellen
+options = EnclosureOptions()
+options.EnclosureType = EnclosureType.Box
+options.EnclosureCushion = BoxEnclosureCushion(MM(10), MM(10), MM(10), MM(10), MM(200), MM(200))
+selection = Selection.Create(GetRootPart().Components[0].Content.Bodies[0])
+result = Enclosure.Create(selection, options)
+
+# Elemente von Physik ausschließen
+selection = Selection.Create(GetRootPart().Components[0].Content.Bodies[0])
+suppress = True
+ViewHelper.SetSuppressForPhysics(selection, suppress)
+
+# Benannte Auswahlgruppe erstellen - Inlet
+inlet_faces = GetRootPart().Components[1].Content.Bodies[0].Faces[5]
+primarySelection = Selection.Create(inlet_faces)
+secondarySelection = Selection()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "Inlet")
+
+# Benannte Auswahlgruppe erstellen - Outlet
+outlet_faces = GetRootPart().Components[1].Content.Bodies[0].Faces[4]
+primarySelection = Selection.Create(outlet_faces)
+secondarySelection = Selection()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "Outlet")
+
+# Benannte Auswahlgruppe erstellen - FluidAll: Definition vom Strömungsraum bzw. Fluid
+fluid_all_body = GetRootPart().Components[1].Content.Bodies[0]
+primarySelection = Selection.Create(fluid_all_body)
+secondarySelection = Selection()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "FluidAll")

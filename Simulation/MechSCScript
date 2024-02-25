@@ -1,0 +1,79 @@
+# Anzahl der Designs aus den Parametern erhalten
+AnzahDesigns = int(Parameters.Numbers)
+
+# Faktor für die Maßeinheiten (cm oder mm)
+factor = 100  # Faktor für cm 100, für mm 1000
+
+# Design-Datei öffnen
+DocumentInsert.Execute(r"C:\Users\3duser\Documents\GenerativDesignLunaNG\Designs\Final2.stl")
+
+# Netz automatisch reparieren
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+result = FacetAutoFix.Execute(selection)
+
+# 3D-Objekt skalieren
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+preserveHoles = False
+result = Scale.Execute(selection, Frame.Create(Point.Create(MM(0), MM(0), MM(0)), Direction.DirX, Direction.DirY),
+                       Vector.Create(MM(10000), MM(10000), MM(10000)), preserveHoles)
+
+# Facettierte Körper neu vernetzen
+options = FacetRemeshOptions()
+options.MaxEdgeLength = MM(5.0)
+options.AngleTolerance = DEG(70)
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+result = FacetRemesh.Create(selection, options)
+
+# In Volumenkörper umwandeln
+selection = Selection.Create(GetRootPart().Components[0].Content.Meshes[0])
+mergeFaces = False
+result = ConvertToSolid.Execute(selection, mergeFaces, Info1)
+
+# Körperauswahl für die Benennung
+primarySelection = Selection.Create(GetRootPart().Components[0].Content.Bodies[0])
+secondarySelection = Selection()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "GenDesign")
+
+# Motoranbindung erstellen
+root_part = GetRootPart().GetDescendants[IDesignFace]()
+Einlaufflaechen = []
+
+# Schleife über alle DesignFaces für die Motoranbindung
+for i in range(0, EintraegePart):
+    if int(factor * root_part[i].GetFacePoint(0.5, 0.5).Z) == 43:
+        Einlaufflaechen.append(root_part[i])
+
+# Auswahl für Motoranbindung erstellen
+primarySelection = Selection.CreateByObjects(Einlaufflaechen)
+secondarySelection = Selection()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "Motoranbindung")
+
+# Einlauf auswählen
+Einlaufflaechen = []
+for i in range(0, EintraegePart):
+    if int(factor * root_part[i].GetFacePoint(0.5, 0.5).Z) == 1:
+        Einlaufflaechen.append(root_part[i])
+
+# Auswahl für Einlauf erstellen
+primarySelection = Selection.CreateByObjects(Einlaufflaechen)
+secondarySelection = Selection()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "Einlauf")
+
+# Befestigung wählen und selektieren
+Befestigung = []
+for i in range(0, EintraegePart):
+    if int(factor * root_part[i].GetFacePoint(0.5, 0.5).X) == 32 and \
+       int(factor * root_part[i].GetFacePoint(0.5, 0.5).Y) == 3 and \
+       int(factor * root_part[i].GetFacePoint(0.5, 0.5).Z) == 40:
+        Befestigung.append(root_part[i])
+    # Weitere Bedingungen für Befestigungen
+
+# Auswahl für Befestigungen erstellen
+primarySelection = Selection.CreateByObjects(Befestigung)
+print(len(Befestigung))
+secondarySelection = Selection()
+result = NamedSelection.Create(primarySelection, secondarySelection)
+result = NamedSelection.Rename("Gruppe1", "BefestigungStruktur")
